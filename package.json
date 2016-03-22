@@ -3,6 +3,7 @@
   "description": "Slack /onedrive command",
   "version": "0.0.1",
   "dependencies": {
-    "express": "^4.13.4"
+    "express": "^4.13.4",
+    "node-fetch": "^1.4.0"
   }
 }
