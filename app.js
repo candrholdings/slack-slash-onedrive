@@ -1,5 +1,7 @@
 'use strict';
 
+console.log(JSON.stringify(process.env, null, 2));
+
 const express = require('express');
 
 const
@@ -10,7 +12,7 @@ app.use(express.static('html'));
 
 app.get('/api/ngrokport', (req, res) => {
   res.json({
-    port: process.env.APPSETTINGS_NGROK_PORT
+    port: process.env.APPSETTING_NGROK_PORT
   });
 });
 
