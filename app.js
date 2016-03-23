@@ -73,8 +73,8 @@ app.use((req, res, next) => {
 
           window.location.replace(
             window.location.href.replace(
-              /(https?:\\/\\/)[^\/]*(.*)/,
-              '$1${config.ngrokHostname}$2'
+              /^https?:\\/\\/[^\/]*(.*)/,
+              '${config.ngrokHostname}$1'
             )
           );
         }();
