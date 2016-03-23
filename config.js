@@ -1,8 +1,13 @@
 'use strict';
 
+const env = process.env;
+
 module.exports = {
-  clientID: process.env.appsetting_oauth_client_id,
-  clientSecret: process.env.appsetting_oauth_client_secret,
-  ngrokHostname: process.env.appsetting_ngrok_hostname,
-  redirectURL: process.env.appsetting_oauth_redirect_url
+  clientID: env.appsetting_oauth_client_id,
+  clientSecret: env.appsetting_oauth_client_secret,
+  ngrokHostname: env.appsetting_ngrok_hostname,
+  oneDriveRefreshToken: env.appsetting_onedrive_refresh_token,
+  oneDriveRoot: env.appsetting_onedrive_root,
+  redirectURL: env.appsetting_oauth_redirect_url,
+  slackSlashToken: env.appsetting_slack_slash_token
 };
