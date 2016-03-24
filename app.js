@@ -26,6 +26,16 @@ const
     '.one': '#783673',
     '.pdf': '#FB0200'
   },
+  EXTENSION_IMAGE_PREFIX = 'https://slackslashonedrive.azurewebsites.net/img/',
+  EXTENSION_IMAGE = {
+    '.docx': 'doc.png',
+    '.doc': 'doc.png',
+    '.xlsx': 'xls.png',
+    '.xls': 'xls.png',
+    '.pptx': 'ppt.png',
+    '.ppt': 'ppt.png',
+    '.pdf': 'pdf.png'
+  },
   MAX_NUM_RESULT = 10,
   ONE_MONTH = 1000 * 60 * 60 * 24 * 30;
 
@@ -142,15 +152,17 @@ app.post('/slash', (req, res) => {
                   }
 
                   const
-                    extName = (/\..*$/.exec(json.name) || [])[0],
-                    color = EXTENSION_COLOR[(extName || '').toLowerCase()] || '#CCC',
+                    extName = ((/\..*$/.exec(json.name) || [])[0] || '').toLowerCase(),
+                    color = EXTENSION_COLOR[extName] || '#CCC',
                     filename = `${parentPath}/${decodeURI(json.name)}`,
-                    timeAgo = Date.now() - new Date(json.fileSystemInfo.lastModifiedDateTime).getTime();
+                    timeAgo = Date.now() - new Date(json.fileSystemInfo.lastModifiedDateTime).getTime(),
+                    image = EXTENSION_IMAGE[extName];
 
                   return {
                     color: color,
                     fallback: filename,
                     mrkdwn_in: ['text', 'pretext'],
+                    thumb_url: image && `${EXTENSION_IMAGE_PREFIX}${image}`,
                     title: `:page_facing_up: ${filename}`,
                     title_link: json.webUrl,
                     text: `Located at <https://onedrive.live.com/redir?resid=${json.parentReference.id}|${parentPath}>\nLast modified ${time(timeAgo)} ago by ${(json.lastModifiedBy || json.createdBy || {}).user.displayName}`
