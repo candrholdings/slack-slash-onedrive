@@ -138,9 +138,10 @@ app.post('/slash', (req, res) => {
                   return {
                     color: timeAgo > ONE_MONTH ? '#CCC' : '#094AB2',
                     fallback: filename,
+                    mrkdwn_in: ['text', 'pretext'],
                     title: `:page_facing_up: ${filename}`,
                     title_link: json.webUrl,
-                    text: `Last modified ${time(timeAgo)} ago by ${(json.lastModifiedBy || json.createdBy || {}).user.displayName}`
+                    text: `Located at <https://onedrive.live.com/redir?resid=${json.parentReference.id}|${parentPath}>\nLast modified ${time(timeAgo)} ago by ${(json.lastModifiedBy || json.createdBy || {}).user.displayName}`
                     // fields: [{
                     //   title: 'Size',
                     //   value: bytes(json.size),
