@@ -15,7 +15,9 @@ const
   port = process.env.port || process.argv[2] || 80;
 
 const
-  COMMAND_PATTERN = /^search\s+(.*)/i;
+  COMMAND_PATTERN = /^(search(-raw)?)\s+(.*)/i,
+  MAX_NUM_RESULT = 10,
+  ONE_MONTH = 1000 * 60 * 60 * 24 * 30;
 
 app.use(require('body-parser').urlencoded({ extended: false, inflate: false }));
 
@@ -51,9 +53,13 @@ app.post('/slash', (req, res) => {
     return res.status(200).send({ text: 'Unknown command' });
   }
 
-  const searchText = commandMatch[1];
+  const
+    command = commandMatch[1],
+    searchText = commandMatch[3];
 
-  res.status(204).send();
+  res.status(200).send({
+    text: `Searching for documents containing "${searchText}"`
+  });
 
   exchangeAccessToken(config.oneDriveRefreshToken)
     .then(
@@ -75,9 +81,19 @@ app.post('/slash', (req, res) => {
         )
           .then(res => res.json())
           .then(json => {
-            if (!json.value.length) {
+            if (json.error) {
+              return sendSlackResponse(responseURL, {
+                text: `Failed to search documents due to "${json.error.message}"`
+              });
+            }
+
+            if (command === 'search-raw') {
               sendSlackResponse(responseURL, {
-                text: `We cannot find any documents containing "${searchText}"`
+                text: `\`\`\`${JSON.stringify(json, null, 2)}\`\`\``
+              });
+            } else if (!json.value.length) {
+              sendSlackResponse(responseURL, {
+                text: `We did not found any documents containing "${searchText}"`
               });
             } else {
               sendSlackResponse(responseURL, {
@@ -87,22 +103,38 @@ app.post('/slash', (req, res) => {
                   y = new Date(y.lastModifiedDateTime).getTime();
 
                   return y - x;
-                }).map(json => ({
-                  color: '#094AB2',
-                  fallback: json.name,
-                  title: `:page_facing_up: ${json.name}`,
-                  title_link: json.webUrl,
-                  text: `Last modified ${time(Date.now() - new Date(json.lastModifiedDateTime).getTime())} ago by ${(json.lastModifiedBy || json.createdBy || {}).user.displayName}`
-                  // fields: [{
-                  //   title: 'Size',
-                  //   value: bytes(json.size),
-                  //   short: true
-                  // }, {
-                  //   title: 'Last modified',
-                  //   value: dateFormat(json.lastModifiedDateTime),
-                  //   short: true
-                  // }]
-                }))
+                }).reduce((result, json) => {
+                  result.length < MAX_NUM_RESULT && result.push(json);
+
+                  return result;
+                }, []).map(json => {
+                  let parentPath = decodeURI(json.parentReference.path.replace(/^\/drive\/root:\//, ''));
+
+                  if (parentPath.substr(0, oneDriveRoot.length + 1) === oneDriveRoot + '/') {
+                    parentPath = parentPath.substr(oneDriveRoot.length + 1);
+                  }
+
+                  const
+                    filename = `${parentPath}/${decodeURI(json.name)}`,
+                    timeAgo = Date.now() - new Date(json.lastModifiedDateTime).getTime();
+
+                  return {
+                    color: timeAgo > ONE_MONTH ? '#CCC' : '#094AB2',
+                    fallback: filename,
+                    title: `:page_facing_up: ${filename}`,
+                    title_link: json.webUrl,
+                    text: `Last modified ${time(timeAgo)} ago by ${(json.lastModifiedBy || json.createdBy || {}).user.displayName}`
+                    // fields: [{
+                    //   title: 'Size',
+                    //   value: bytes(json.size),
+                    //   short: true
+                    // }, {
+                    //   title: 'Last modified',
+                    //   value: dateFormat(json.lastModifiedDateTime),
+                    //   short: true
+                    // }]
+                  };
+                })
               });
             }
           })
