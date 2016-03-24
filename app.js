@@ -19,6 +19,11 @@ const
   MAX_NUM_RESULT = 10,
   ONE_MONTH = 1000 * 60 * 60 * 24 * 30;
 
+let cachedAccessToken = {
+  token: null,
+  expiry: 0
+}
+
 app.use(require('body-parser').urlencoded({ extended: false, inflate: false }));
 
 app.get('/oauth/config', (req, res) => {
@@ -41,8 +46,10 @@ app.post('/slash', (req, res) => {
     body = req.body,
     responseURL = body.response_url;
 
-  if (body.token !== config.slackSlashToken) {
-    return res.status(200).send({ text: 'Invalid Slack token' });
+  if (!config.slackSlashToken) {
+    return res.status(200).send({ text: 'Missing environment variable "APPSETTING_SLACK_SLASH_TOKEN"' });
+  } else if (body.token !== config.slackSlashToken) {
+    return res.status(200).send({ text: 'Invalid Slack token received' });
   } else if (!config.oneDriveRefreshToken) {
     return res.status(200).send({ error: 'Missing environment variable "APPSETTING_ONEDRIVE_REFRESH_TOKEN"' });
   }
@@ -58,7 +65,7 @@ app.post('/slash', (req, res) => {
     searchText = commandMatch[3];
 
   res.status(200).send({
-    text: `Searching for documents containing "${searchText}"`
+    text: `Searching for documents containing "${searchText}"…`
   });
 
   exchangeAccessToken(config.oneDriveRefreshToken)
@@ -94,8 +101,20 @@ app.post('/slash', (req, res) => {
                 text: `We did not found any documents containing "${searchText}"`
               });
             } else {
+              const numFound = json['@search.approximateCount'];
+
+              let message;
+
+              if (numFound > MAX_NUM_RESULT) {
+                message = `We found ${numFound} documents containing "${searchText}", the first ${MAX_NUM_RESULT} are listed below`;
+              } else if (numFound > 1) {
+                message = `We found ${numFound} documents containing "${searchText}"`;
+              } else {
+                message = `We found one document containing "${searchText}"`;
+              }
+
               sendSlackResponse(responseURL, {
-                text: `We found ${json['@search.approximateCount']} documents containing "${searchText}"`,
+                text: message,
                 attachments: json.value.sort((x, y) => {
                   x = new Date(x.lastModifiedDateTime).getTime();
                   y = new Date(y.lastModifiedDateTime).getTime();
@@ -174,6 +193,12 @@ function redeemCode(code) {
 }
 
 function exchangeAccessToken(refreshToken) {
+  const now = Date.now();
+
+  if (now < cachedAccessToken.expiry && cachedAccessToken.token) {
+    return new Promise(resolve => resolve(cachedAccessToken.token));
+  }
+
   return fetch(
     'https://login.live.com/oauth20_token.srf',
     {
@@ -191,7 +216,16 @@ function exchangeAccessToken(refreshToken) {
     }
   )
     .then(res => res.json())
-    .then(json => json.access_token);
+    .then(json => {
+      const token = json.access_token;
+
+      cachedAccessToken = {
+        token,
+        expiry: now + json.expires_in * 1000
+      }
+
+      return token;
+    });
 }
 
 app.use(express.static('html'));
