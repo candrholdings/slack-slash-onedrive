@@ -28,13 +28,13 @@ const
   },
   EXTENSION_IMAGE_PREFIX = 'https://slackslashonedrive.azurewebsites.net/img/',
   EXTENSION_IMAGE = {
-    '.docx': 'doc.png',
-    '.doc': 'doc.png',
-    '.xlsx': 'xls.png',
-    '.xls': 'xls.png',
-    '.pptx': 'ppt.png',
-    '.ppt': 'ppt.png',
-    '.pdf': 'pdf.png'
+    '.docx': 'doc2.png',
+    '.doc': 'doc2.png',
+    '.xlsx': 'xls2.png',
+    '.xls': 'xls2.png',
+    '.pptx': 'ppt2.png',
+    '.ppt': 'ppt2.png',
+    '.pdf': 'pdf2.png'
   },
   MAX_NUM_RESULT = 10,
   ONE_MONTH = 1000 * 60 * 60 * 24 * 30;
