@@ -116,8 +116,8 @@ app.post('/slash', (req, res) => {
               sendSlackResponse(responseURL, {
                 text: message,
                 attachments: json.value.sort((x, y) => {
-                  x = new Date(x.lastModifiedDateTime).getTime();
-                  y = new Date(y.lastModifiedDateTime).getTime();
+                  x = new Date(x.fileSystemInfo.lastModifiedDateTime).getTime();
+                  y = new Date(y.fileSystemInfo.lastModifiedDateTime).getTime();
 
                   return y - x;
                 }).reduce((result, json) => {
