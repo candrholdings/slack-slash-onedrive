@@ -95,7 +95,6 @@ app.post('/slash', (req, res) => {
               });
             } else {
               sendSlackResponse(responseURL, {
-                response_type: 'in_channel',
                 text: `We found ${json['@search.approximateCount']} documents containing "${searchText}"`,
                 attachments: json.value.sort((x, y) => {
                   x = new Date(x.lastModifiedDateTime).getTime();
