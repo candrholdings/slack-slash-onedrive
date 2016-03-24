@@ -3,13 +3,19 @@
 // console.log(JSON.stringify(process.env, null, 2));
 
 const
+  bytes = require('./number').bytes,
   config = require('./config'),
+  dateFormat = require('dateformat'),
   express = require('express'),
-  fetch = require('node-fetch');
+  fetch = require('node-fetch'),
+  time = require('./time').humanize;
 
 const
   app = express(),
   port = process.env.port || process.argv[2] || 80;
+
+const
+  COMMAND_PATTERN = /^search\s+(.*)/i;
 
 app.use(require('body-parser').urlencoded({ extended: false, inflate: false }));
 
@@ -33,43 +39,84 @@ app.post('/slash', (req, res) => {
     body = req.body,
     responseURL = body.response_url;
 
-  console.log(req.body);
-
-  if (req.body.token !== config.slackSlashToken) {
-    return res.status(400).send();
+  if (body.token !== config.slackSlashToken) {
+    return res.status(200).send({ text: 'Invalid Slack token' });
   } else if (!config.oneDriveRefreshToken) {
-    return res.status(400).send({ error: 'missing APPSETTING_ONEDRIVE_REFRESH_TOKEN' });
+    return res.status(200).send({ error: 'Missing environment variable "APPSETTING_ONEDRIVE_REFRESH_TOKEN"' });
   }
+
+  var commandMatch = COMMAND_PATTERN.exec(body.text);
+
+  if (!commandMatch) {
+    return res.status(200).send({ text: 'Unknown command' });
+  }
+
+  const searchText = commandMatch[1];
 
   res.status(204).send();
 
   exchangeAccessToken(config.oneDriveRefreshToken)
-    .then(refreshToken => {
-      console.log(`https://api.onedrive.com/v1.0/drive/root:/${config.oneDriveRoot}:/view.search?q=${encodeURIComponent('ilas')}`);
+    .then(
+      refreshToken => {
+        const
+          oneDriveRoot = config.oneDriveRoot,
+          itemSpec = oneDriveRoot ? (':/' + encodeURI(config.oneDriveRoot) + ':') : '',
+          url = `https://api.onedrive.com/v1.0/drive/root${itemSpec}/view.search?q=${encodeURIComponent(searchText)}&orderby=lastModifiedDateTime%20desc`;
 
-      fetch(
-        // `https://api.onedrive.com/v1.0/drive/root/view.search?q=${encodeURIComponent('ilas')}`,
-        `https://api.onedrive.com/v1.0/drive/root:/${encodeURI('Documents')}:/view.search?q=${encodeURIComponent('ilas')}`,
-        {
-          headers: {
-            authorization: `bearer ${refreshToken}`
+        console.log(url);
+
+        fetch(
+          url,
+          {
+            headers: {
+              authorization: `bearer ${refreshToken}`
+            }
           }
-        }
-      )
-        .then(res => res.json())
-        .then(json => {
-          console.log(json);
+        )
+          .then(res => res.json())
+          .then(json => {
+            if (!json.value.length) {
+              sendSlackResponse(responseURL, {
+                text: `We cannot find any documents containing "${searchText}"`
+              });
+            } else {
+              sendSlackResponse(responseURL, {
+                text: `We found ${json['@search.approximateCount']} documents containing "${searchText}"`,
+                attachments: json.value.sort((x, y) => {
+                  x = new Date(x.lastModifiedDateTime).getTime();
+                  y = new Date(y.lastModifiedDateTime).getTime();
 
-          sendSlackResponse(responseURL, {
-            text: '```' + JSON.stringify(json, null, 2) + '```'
+                  return y - x;
+                }).map(json => ({
+                  color: '#094AB2',
+                  fallback: json.name,
+                  title: `:page_facing_up: ${json.name}`,
+                  title_link: json.webUrl,
+                  text: `Last modified ${time(Date.now() - new Date(json.lastModifiedDateTime).getTime())} ago by ${(json.lastModifiedBy || json.createdBy || {}).user.displayName}`
+                  // fields: [{
+                  //   title: 'Size',
+                  //   value: bytes(json.size),
+                  //   short: true
+                  // }, {
+                  //   title: 'Last modified',
+                  //   value: dateFormat(json.lastModifiedDateTime),
+                  //   short: true
+                  // }]
+                }))
+              });
+            }
+          })
+          .catch(err => {
+            console.log(err);
+
+            sendSlackResponse(responseURL, { text: `Error: ${err.message}` });
           });
-        })
-        .catch(err => {
-          console.log(err);
-
-          sendSlackResponse(responseURL, { text: `Error: ${err.message}` });
-        });
-    });
+      },
+      err => {
+        console.log(err);
+        sendSlackResponse(responseURL, { text: `Failed to exchange refresh token\n\`\`\`${err}\`\`\`` });
+      }
+    );
 });
 
 function sendSlackResponse(responseURL, content) {
@@ -100,10 +147,7 @@ function redeemCode(code) {
     }
   )
     .then(res => res.json())
-    .then(json => json.refresh_token)
-    .catch(err => {
-      res.status(500).send('failed to redeem code for refresh token');
-    });
+    .then(json => json.refresh_token);
 }
 
 function exchangeAccessToken(refreshToken) {
@@ -124,10 +168,7 @@ function exchangeAccessToken(refreshToken) {
     }
   )
     .then(res => res.json())
-    .then(json => json.access_token)
-    .catch(err => {
-      res.status(500).send('failed to exchange refresh token for access token');
-    });
+    .then(json => json.access_token);
 }
 
 app.use(express.static('html'));
