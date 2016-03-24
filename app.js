@@ -16,6 +16,16 @@ const
 
 const
   COMMAND_PATTERN = /^(search(-raw)?)\s+(.*)/i,
+  EXTENSION_COLOR = {
+    '.docx': '#295391',
+    '.doc': '#295391',
+    '.xlsx': '#1F6B41',
+    '.xls': '#1F6B41',
+    '.pptx': '#C44423',
+    '.ppt': '#C44423',
+    '.one': '#783673',
+    '.pdf': '#FB0200'
+  },
   MAX_NUM_RESULT = 10,
   ONE_MONTH = 1000 * 60 * 60 * 24 * 30;
 
@@ -132,11 +142,13 @@ app.post('/slash', (req, res) => {
                   }
 
                   const
+                    extName = (/\..*$/.exec(json.name) || [])[0],
+                    color = EXTENSION_COLOR[(extName || '').toLowerCase()] || '#CCC',
                     filename = `${parentPath}/${decodeURI(json.name)}`,
                     timeAgo = Date.now() - new Date(json.fileSystemInfo.lastModifiedDateTime).getTime();
 
                   return {
-                    color: timeAgo > ONE_MONTH ? '#CCC' : '#094AB2',
+                    color: color,
                     fallback: filename,
                     mrkdwn_in: ['text', 'pretext'],
                     title: `:page_facing_up: ${filename}`,
