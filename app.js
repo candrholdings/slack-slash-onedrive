@@ -69,8 +69,6 @@ app.post('/slash', (req, res) => {
           itemSpec = oneDriveRoot ? (':/' + encodeURI(config.oneDriveRoot) + ':') : '',
           url = `https://api.onedrive.com/v1.0/drive/root${itemSpec}/view.search?q=${encodeURIComponent(searchText)}&orderby=lastModifiedDateTime%20desc`;
 
-        console.log(url);
-
         fetch(
           url,
           {
@@ -97,6 +95,7 @@ app.post('/slash', (req, res) => {
               });
             } else {
               sendSlackResponse(responseURL, {
+                response_type: 'in_channel',
                 text: `We found ${json['@search.approximateCount']} documents containing "${searchText}"`,
                 attachments: json.value.sort((x, y) => {
                   x = new Date(x.lastModifiedDateTime).getTime();
@@ -138,16 +137,9 @@ app.post('/slash', (req, res) => {
               });
             }
           })
-          .catch(err => {
-            console.log(err);
-
-            sendSlackResponse(responseURL, { text: `Error: ${err.message}` });
-          });
+          .catch(err => sendSlackResponse(responseURL, { text: `Error: ${err.message || err.code || err}` }));
       },
-      err => {
-        console.log(err);
-        sendSlackResponse(responseURL, { text: `Failed to exchange refresh token\n\`\`\`${err}\`\`\`` });
-      }
+      err => sendSlackResponse(responseURL, { text: `Failed to exchange refresh token\n\`\`\`${err}\`\`\`` })
     );
 });
 
