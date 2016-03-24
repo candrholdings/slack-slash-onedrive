@@ -133,7 +133,7 @@ app.post('/slash', (req, res) => {
 
                   const
                     filename = `${parentPath}/${decodeURI(json.name)}`,
-                    timeAgo = Date.now() - new Date(json.lastModifiedDateTime).getTime();
+                    timeAgo = Date.now() - new Date(json.fileSystemInfo.lastModifiedDateTime).getTime();
 
                   return {
                     color: timeAgo > ONE_MONTH ? '#CCC' : '#094AB2',
