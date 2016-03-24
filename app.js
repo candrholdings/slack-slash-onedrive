@@ -163,7 +163,7 @@ app.post('/slash', (req, res) => {
                     fallback: filename,
                     mrkdwn_in: ['text', 'pretext'],
                     thumb_url: image && `${EXTENSION_IMAGE_PREFIX}${image}`,
-                    title: `:page_facing_up: ${filename}`,
+                    title: filename,
                     title_link: json.webUrl,
                     text: `Located at <https://onedrive.live.com/redir?resid=${json.parentReference.id}|${parentPath}>\nLast modified ${time(timeAgo)} ago by ${(json.lastModifiedBy || json.createdBy || {}).user.displayName}`
                     // fields: [{
